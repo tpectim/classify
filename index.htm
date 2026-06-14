@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>分類配對 - 語音開關與分類管理版</title>
+    <title>分類配對 - 語音開關與分類管理版 (單題大卡片)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -14,12 +14,11 @@
         body {
             font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif;
             background-color: #f1f5f9;
-            overflow: hidden; /* 僅鎖定主背景滾動，確保遊戲畫布貼合螢幕 */
+            overflow: hidden; 
             touch-action: none;
             user-select: none;
         }
 
-        /* 解除管理員面板的觸控與選取限制，確保所有行動裝置皆可完整滾動顯示 */
         .admin-panel-overlay {
             touch-action: auto !important;
             user-select: auto !important;
@@ -126,6 +125,11 @@
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
+        /* 題目進場動畫 */
+        .card-enter-active {
+            animation: popIn 0.4s ease-out;
+        }
+
         /* --- 中央待選物品容器 --- */
         .items-container {
             position: absolute;
@@ -134,10 +138,8 @@
             transform: translate(-50%, -50%);
             z-index: 100;
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
-            align-content: center;
-            gap: 12px;
+            align-items: center;
             pointer-events: none; 
             padding: 20px;
         }
@@ -145,20 +147,22 @@
         /* 遊戲物品卡片 */
         .game-item {
             background-color: white;
-            border-radius: 16px;
-            border: 3px solid #fbbf24;
+            border-radius: 24px;
+            border: 4px solid #fbbf24;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             cursor: grab;
             touch-action: none;
             pointer-events: auto;
             z-index: 101;
             transition: transform 0.1s;
             overflow: hidden;
-            padding: 5px;
+            padding: 10px;
+            /* 確保卡片出場時有動畫效果 */
+            animation: popIn 0.3s ease-out; 
         }
 
         .game-item:active { cursor: grabbing; transform: scale(0.95); }
@@ -166,8 +170,8 @@
         .game-item.dragging {
             cursor: grabbing;
             z-index: 9999 !important;
-            box-shadow: 0 20px 30px rgba(0,0,0,0.25);
-            transform: scale(1.15) rotate(5deg);
+            box-shadow: 0 25px 40px rgba(0,0,0,0.3);
+            transform: scale(1.1) rotate(3deg);
             transition: none;
         }
 
@@ -193,7 +197,6 @@
 
         .swal2-container { z-index: 10000 !important; }
 
-        /* 自訂美化卷軸 */
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -259,7 +262,7 @@
             </div>
 
             <div class="items-container" :style="containerSizeStyle">
-                <div v-for="item in currentItems" 
+                <div v-for="item in (currentItems.length > 0 ? [currentItems[0]] : [])" 
                      :key="item.id"
                      class="game-item"
                      :style="gameItemSizeStyle"
@@ -267,11 +270,11 @@
                      @mousedown="startDrag($event, item)"
                      @touchstart="startDrag($event, item)">
                     
-                    <div v-if="item.image" class="w-full h-[70%] flex items-center justify-center pointer-events-none p-0.5">
+                    <div v-if="item.image" class="w-full h-[75%] flex items-center justify-center pointer-events-none p-1">
                         <img :src="resolveImgPreview(item.image)" class="custom-img object-contain">
                     </div>
-                    <span v-else class="text-4xl md:text-5xl pointer-events-none">{{ item.emoji }}</span>
-                    <span class="text-xs md:text-sm font-bold text-slate-700 pointer-events-none mt-1 truncate w-full text-center px-1">{{ item.text }}</span>
+                    <span v-else class="text-[5rem] md:text-[6rem] pointer-events-none leading-none">{{ item.emoji }}</span>
+                    <span class="text-lg md:text-2xl font-bold text-slate-800 pointer-events-none mt-2 truncate w-full text-center px-2">{{ item.text }}</span>
                 </div>
             </div>
         </div>
@@ -504,7 +507,7 @@
                 const gameFinished = ref(false);
                 const timer = ref(0);
                 const timerInterval = ref(null);
-                const speechEnabled = ref(true); // 語音報讀狀態開關
+                const speechEnabled = ref(true);
                 
                 const windowSize = reactive({ w: window.innerWidth, h: window.innerHeight });
                 const dragTarget = ref(null);
@@ -682,7 +685,6 @@
                     reader.readAsDataURL(file);
                 }
 
-                // --- 語音提示開關控制與聲音 ---
                 function toggleSpeech() {
                     speechEnabled.value = !speechEnabled.value;
                     if (speechEnabled.value) {
@@ -693,7 +695,7 @@
                 }
 
                 function speak(text) {
-                    if (!speechEnabled.value) return; // 若開關關閉則不念
+                    if (!speechEnabled.value) return; 
                     if ('speechSynthesis' in window && text) {
                         window.speechSynthesis.cancel();
                         const utterance = new SpeechSynthesisUtterance(text);
@@ -738,7 +740,13 @@
                 }
 
                 const containerSizeStyle = computed(() => ({ width: `${Math.min(windowSize.w, windowSize.h) * 0.45}px`, height: `${Math.min(windowSize.w, windowSize.h) * 0.45}px` }));
-                const gameItemSizeStyle = computed(() => ({ width: `${Math.min(windowSize.w, windowSize.h) < 600 ? 80 : 100}px`, height: `${Math.min(windowSize.w, windowSize.h) < 600 ? 80 : 100}px` }));
+                
+                /* 修改：將卡片大小放大 */
+                const gameItemSizeStyle = computed(() => ({ 
+                    width: `${Math.min(windowSize.w, windowSize.h) < 600 ? 160 : 220}px`, 
+                    height: `${Math.min(windowSize.w, windowSize.h) < 600 ? 160 : 220}px` 
+                }));
+
                 function getCompletedItems(catId) { return completedItems.value.filter(i => i.categoryId === catId); }
                 function getCompletedItemStyle(item) { return { width: `${Math.min(windowSize.w, windowSize.h) < 600 ? 50 : 60}px`, height: `${Math.min(windowSize.w, windowSize.h) < 600 ? 50 : 60}px`, left: `${item.finalX}%`, top: `${item.finalY}%`, transform: 'translate(-50%, -50%)', zIndex: 20 }; }
 
@@ -755,7 +763,7 @@
                 function onDrag(e) {
                     if (!currentElement) return; e.preventDefault();
                     const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX; const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-                    currentElement.style.transform = `translate(${clientX - startX}px, ${clientY - startY}px) scale(1.15)`; 
+                    currentElement.style.transform = `translate(${clientX - startX}px, ${clientY - startY}px) scale(1.1)`; 
                     dragTarget.value = null;
                     document.querySelectorAll('.category-zone').forEach((el, idx) => {
                          const rect = el.getBoundingClientRect();
@@ -789,6 +797,11 @@
                     timer.value = 0; completedItems.value = []; gameFinished.value = false; clearInterval(timerInterval.value);
                     let pool = [...config.items].sort(() => Math.random() - 0.5);
                     currentItems.value = pool.slice(0, Math.min(config.maxItems, pool.length)).map(i => ({...i, uniqueKey: Math.random(), shaking: false}));
+                    
+                    if (currentItems.value.length > 0) {
+                        speak(currentItems.value[0].text); // 開場唸出第一張
+                    }
+                    
                     gameStarted.value = true; timerInterval.value = setInterval(() => { timer.value++; }, 1000);
                 }
 
